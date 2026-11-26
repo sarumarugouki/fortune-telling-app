@@ -278,7 +278,7 @@ const NAME_FEATURE_ENABLED = true;
 const STORAGE_KEY = "fortuneApp.birthday";
 const SAVE_PREF_KEY = "fortuneApp.savePref";
 const BIRTHDAY_INPUT_IDS = ["dailyDate", "zodiacDate", "numDate", "coupleA"];
-const USE_CARD_IMAGES = false; // 画像（images/cards/major-00.jpg など）をアップロードしたら true に変える
+const USE_CARD_IMAGES = true; // 画像（images/cards/major-00.png など）を使う
 
 const ELEMENTS = { fire: "火", earth: "地", air: "風", water: "水" };
 const SIGNS = [
@@ -733,7 +733,7 @@ function cardArtHtml(card) {
   if (card.type === "major" && USE_CARD_IMAGES) {
     const index = MAJOR.findIndex(m => m[0] === card.name);
     if (index >= 0) {
-      const file = `images/cards/major-${String(index).padStart(2, "0")}.jpg`;
+      const file = `images/cards/major-${String(index).padStart(2, "0")}.png`;
       return `<img src="${file}" alt="${escapeHtml(card.name)}">`;
     }
   }
