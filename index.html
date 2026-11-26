@@ -278,7 +278,7 @@ const NAME_FEATURE_ENABLED = true;
 const STORAGE_KEY = "fortuneApp.birthday";
 const SAVE_PREF_KEY = "fortuneApp.savePref";
 const BIRTHDAY_INPUT_IDS = ["dailyDate", "zodiacDate", "numDate", "coupleA"];
-const USE_CARD_IMAGES = true; // 画像（images/cards/major-00.png など）を使う
+const USE_CARD_IMAGES = true; // 画像（images/cards/ の中のPNG）を使う
 
 const ELEMENTS = { fire: "火", earth: "地", air: "風", water: "水" };
 const SIGNS = [
@@ -434,7 +434,10 @@ const RANKS = [
 const DECK = [
   ...MAJOR.map(m => ({ name: m[0], up: m[1], rev: m[2], type: "major", suit: null })),
   ...Object.entries(SUITS).flatMap(([key, s]) =>
-    RANKS.map(r => ({ name: `${s[0]}の${r[0]}`, up: s[1] + r[1], rev: s[2] + r[2], type: "minor", suit: key }))
+    RANKS.map((r, i) => ({
+      name: `${s[0]}の${r[0]}`, up: s[1] + r[1], rev: s[2] + r[2],
+      type: "minor", suit: key, rank: i + 1
+    }))
   )
 ];
 const MAJOR_GLYPHS = {
@@ -728,14 +731,21 @@ function clearTarotTimers() {
   tarotTimers = [];
 }
 
-// カードの絵（大アルカナは画像、USE_CARD_IMAGES が false の間は記号）
-function cardArtHtml(card) {
-  if (card.type === "major" && USE_CARD_IMAGES) {
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+// カードの画像ファイル名（大アルカナ: major-00.png 〜 / 小アルカナ: minor-wands-01.png など）
+function cardImagePath(card) {
+  if (card.type === "major") {
     const index = MAJOR.findIndex(m => m[0] === card.name);
-    if (index >= 0) {
-      const file = `images/cards/major-${String(index).padStart(2, "0")}.png`;
-      return `<img src="${file}" alt="${escapeHtml(card.name)}">`;
-    }
+    return index >= 0 ? `images/cards/major-${pad2(index)}.png` : null;
+  }
+  return `images/cards/minor-${card.suit}-${pad2(card.rank)}.png`;
+}
+
+function cardArtHtml(card) {
+  if (USE_CARD_IMAGES) {
+    const file = cardImagePath(card);
+    if (file) return `<img src="${file}" alt="${escapeHtml(card.name)}">`;
   }
   if (card.type === "major") return `<span class="art-glyph">${MAJOR_GLYPHS[card.name] ?? "✦"}</span>`;
   return SUIT_ICONS[card.suit] ?? "";
