@@ -102,6 +102,10 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  .subtabs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+  .sub-panel { display: none; }
+  .sub-panel.active { display: block; }
+
   .result { margin-top: 18px; }
   .result > * { animation: fadeUp 0.7s ease both; }
   .stars { color: var(--gold); font-size: 20px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(255, 217, 138, 0.6); }
@@ -109,6 +113,17 @@
   .score-label { display: inline-block; min-width: 100px; color: var(--mist); }
   .small { font-size: 13px; color: var(--mist); opacity: 0.85; }
   .error { color: #ffb3c1; border-left: 3px solid #ffb3c1; padding-left: 12px; }
+
+  .fortune-card {
+    background: linear-gradient(160deg, rgba(60, 40, 120, 0.5), rgba(20, 14, 50, 0.85));
+    border: 1px solid var(--gold-soft); border-radius: 14px; padding: 16px 18px; margin: 12px 0;
+    box-shadow: inset 0 0 24px rgba(255, 217, 138, 0.05);
+  }
+  .fortune-card h3 { margin: 0 0 4px; }
+  .fortune-card p { margin: 6px 0; }
+  .fortune-card ul { padding-left: 1.2em; margin: 6px 0; }
+  .fortune-card .stars { margin-bottom: 4px; }
+  .fortune-disclaimer { font-size: 12px; color: var(--mist); opacity: 0.85; margin-top: 16px; }
 
   .card-art {
     height: 130px; margin: 12px 0; border-radius: 10px; border: 1px solid var(--gold-soft);
@@ -273,6 +288,17 @@
   <p class="small" style="text-align:center;">※ 占いは娯楽としてお楽しみください。</p>
 </div>
 
+<script src="js/fortune-core.js"></script>
+<script src="js/daily-data.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/zodiac-data.js"></script>
+<script src="js/zodiac-monthly.js"></script>
+<script src="js/zodiac-daily.js"></script>
+<script src="js/zodiac-daily-2.js"></script>
+<script src="js/zodiac-daily-3.js"></script>
+<script src="js/zodiac-daily-4.js"></script>
+<script src="js/zodiac.js"></script>
+
 <script>
 const NAME_FEATURE_ENABLED = true;
 const STORAGE_KEY = "fortuneApp.birthday";
@@ -361,30 +387,6 @@ const NUM_COMPAT = {
   2: "考え方が異なる場面もありますが、話し合いで新しい発見があります。",
   1: "個性が強くぶつかることもありますが、互いに刺激を与え合える関係です。"
 };
-const DAILY_DAYS = {
-  1: [4, "新しいスタートに向いた日", "小さなことでも自分から動いてみましょう。"],
-  2: [3, "協力と対話の日", "相手の話を最後まで聞くと、良い流れが生まれます。"],
-  3: [4, "表現と交流の日", "感じたことを言葉にすると、距離が縮まります。"],
-  4: [3, "地道に整える日", "手つかずの作業を一つ片付けると気持ちが軽くなります。"],
-  5: [4, "変化と出会いの日", "いつもと違う話題に、少し触れてみましょう。"],
-  6: [4, "思いやりと家庭の日", "身近な人への感謝を伝えると、運気が高まります。"],
-  7: [3, "内省と学びの日", "静かな時間を作り、考えを整理しましょう。"],
-  8: [5, "実りと行動の日", "目標に対して一歩踏み込むと、手応えが得られます。"],
-  9: [2, "区切りと手放しの日", "終わったことに区切りをつけましょう。"]
-};
-const DAILY_ELEMENT_TIPS = {
-  fire: "情熱を外に向けると、良い刺激が得られます。",
-  earth: "現実的な確認を一つ入れると、安心して進めます。",
-  air: "情報の整理や人との会話が、流れを作ってくれます。",
-  water: "感情を大切にしつつ、無理のない休息を取りましょう。"
-};
-const LUCKY_COLORS = [
-  ["赤", "行動力とやる気を高めます"], ["オレンジ", "人との交流を明るくします"],
-  ["黄色", "思考と発想を広げます"], ["緑", "心の安らぎと調和をもたらします"],
-  ["青", "落ち着きと冷静な判断を助けます"], ["紫", "直感と内省を深めます"],
-  ["白", "気持ちをリセットし、整えます"], ["ピンク", "優しさと思いやりを引き出します"],
-  ["金色", "自信と豊かさを引き寄せます"]
-];
 const MAJOR = [
   ["愚者", "自由と新しい始まり。純粋な気持ちで一歩踏み出す時です。", "軽率な行動や無計画さに注意が必要です。"],
   ["魔術師", "創造力と実行力。手元の資源を活かすと好機が訪れます。", "空回りや手段の選び方に迷いが生じています。"],
@@ -475,12 +477,6 @@ function todayIndex(len) {
   const start = new Date(now.getFullYear(), 0, 0);
   return Math.floor((now - start) / 86400000) % len;
 }
-function todayString() {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${mm}-${dd}`;
-}
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -493,7 +489,7 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-// ===== 生年月日の保存（この端末の中だけ） =====
+// ===== 生年月日の保存（この端末の中だけ・初期状態はオフ） =====
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch (e) { return null; }
 }
@@ -520,7 +516,7 @@ function setupBirthdaySave() {
   const saveCheck = document.getElementById("saveBirthday");
   const clearBtn = document.getElementById("clearBirthday");
 
-  saveCheck.checked = storageGet(SAVE_PREF_KEY) !== "0";
+  saveCheck.checked = storageGet(SAVE_PREF_KEY) === "1";
 
   if (saveCheck.checked) {
     const saved = storageGet(STORAGE_KEY);
@@ -636,32 +632,7 @@ function buildNameSection() {
     ${unknownNote}`;
 }
 
-// ===== 各機能 =====
-function showDaily() {
-  const v = document.getElementById("dailyDate").value;
-  if (!v) return showError("dailyResult", "生年月日を入力してください。");
-  const sign = getSignByDate(v);
-  const today = todayString();
-  const dayNumber = reduceToSingle(toBase(getLifePath(v)) + reduceToSingle(digitSum(today.replace(/-/g, ""))));
-  const [score, theme, advice] = DAILY_DAYS[dayNumber];
-  const lucky = LUCKY_COLORS[todayIndex(LUCKY_COLORS.length)];
-  document.getElementById("dailyResult").innerHTML = `
-    <p><strong>${today}</strong> の運勢</p>
-    <div class="score-row"><span class="score-label">総合運</span><span class="stars">${stars(score)}</span></div>
-    <p><strong>今日の数字：</strong>${dayNumber}（${theme}）</p>
-    <p>${advice}</p>
-    <p><strong>${sign.name}のひとこと：</strong>${sign.messages[todayIndex(sign.messages.length)]}</p>
-    <p><strong>${ELEMENTS[sign.element]}のヒント：</strong>${DAILY_ELEMENT_TIPS[sign.element]}</p>
-    <p><strong>ラッキーカラー：</strong>${lucky[0]}（${lucky[1]}）</p>`;
-}
-function showZodiac() {
-  const v = document.getElementById("zodiacDate").value;
-  if (!v) return showError("zodiacResult", "生年月日を入力してください。");
-  const sign = getSignByDate(v);
-  document.getElementById("zodiacResult").innerHTML = `
-    <p><strong>${sign.name}</strong>（${ELEMENTS[sign.element]}・${sign.keywords}）</p>
-    <p><strong>今日のひとこと：</strong>${sign.messages[todayIndex(sign.messages.length)]}</p>`;
-}
+// ===== 数秘術・相性 =====
 function showNumerology() {
   const value = document.getElementById("numDate").value;
   if (!value) return showError("numResult", "生年月日を入力してください。");
@@ -742,13 +713,26 @@ function cardImagePath(card) {
   return `images/cards/minor-${card.suit}-${pad2(card.rank)}.png`;
 }
 
+function fallbackArtHtml(card) {
+  if (card.type === "major") return `<span class="art-glyph">${MAJOR_GLYPHS[card.name] ?? "✦"}</span>`;
+  return SUIT_ICONS[card.suit] ?? "";
+}
+
+// 画像が読み込めないときは、記号やアイコンの代替イラストに切り替える
+function cardImgFallback(img) {
+  const suit = img.dataset.suit || null;
+  const card = { name: img.dataset.name, suit, type: suit ? "minor" : "major" };
+  img.parentNode.innerHTML = fallbackArtHtml(card);
+}
+
 function cardArtHtml(card) {
   if (USE_CARD_IMAGES) {
     const file = cardImagePath(card);
-    if (file) return `<img src="${file}" alt="${escapeHtml(card.name)}">`;
+    if (file) {
+      return `<img src="${file}" alt="${escapeHtml(card.name)}" data-name="${escapeHtml(card.name)}" data-suit="${escapeHtml(card.suit || "")}" onerror="cardImgFallback(this)">`;
+    }
   }
-  if (card.type === "major") return `<span class="art-glyph">${MAJOR_GLYPHS[card.name] ?? "✦"}</span>`;
-  return SUIT_ICONS[card.suit] ?? "";
+  return fallbackArtHtml(card);
 }
 
 // ===== 総合解釈の文章パターン =====
