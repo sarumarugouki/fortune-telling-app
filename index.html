@@ -102,10 +102,6 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
-  .subtabs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
-  .sub-panel { display: none; }
-  .sub-panel.active { display: block; }
-
   .result { margin-top: 18px; }
   .result > * { animation: fadeUp 0.7s ease both; }
   .stars { color: var(--gold); font-size: 20px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(255, 217, 138, 0.6); }
@@ -202,6 +198,35 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
+
+  /* ===== 段階6：デザイン調整・スマホ対応 ===== */
+  select {
+    width: 100%; padding: 10px 12px; font-size: 16px; font-family: inherit; color: var(--text);
+    background: rgba(10, 8, 30, 0.6); border: 1px solid rgba(255, 217, 138, 0.3);
+    border-radius: 10px; margin-bottom: 14px; color-scheme: dark; outline: none;
+  }
+  select:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 217, 138, 0.35); }
+  .tab-btn { min-height: 44px; }
+  .card-box > button { width: 100%; min-height: 44px; }
+
+  .site-footer { margin-top: 28px; text-align: center; }
+  .site-footer details {
+    text-align: left; margin: 12px auto 0; max-width: 560px; color: var(--mist); font-size: 13px;
+  }
+  .site-footer summary { cursor: pointer; color: var(--gold); text-align: center; }
+  .site-footer ul { padding-left: 1.2em; }
+  .site-footer li { margin: 6px 0; }
+
+  @media (max-width: 480px) {
+    body { padding: 16px 12px 32px; }
+    .card-box { padding: 16px; }
+    .tabs { gap: 8px; }
+    .tab-btn { padding: 8px 12px; font-size: 14px; }
+    input, select { font-size: 16px; }
+    .fortune-card { padding: 14px; }
+    .face.back { font-size: 36px; }
+    .score-label { display: block; min-width: 0; margin-bottom: 2px; }
+  }
 </style>
 </head>
 <body>
@@ -285,7 +310,19 @@
     </div>
   </section>
 
-  <p class="small" style="text-align:center;">※ 占いは娯楽としてお楽しみください。</p>
+  <footer class="site-footer">
+    <p class="small">※ 占いは娯楽としてお楽しみください。医療・法律・投資・人生の重要な判断の代わりにはなりません。</p>
+    <details>
+      <summary>免責事項・プライバシーについて</summary>
+      <ul>
+        <li>占いの結果は、一般的な傾向や参考情報を示したものであり、将来の出来事や結果を保証するものではありません。</li>
+        <li>表示内容の正確性・完全性については保証いたしかねます。大切な判断は、ご自身の考えと専門家への相談を踏まえて行ってください。</li>
+        <li>生年月日は、「この端末に保存する」をオンにした場合にのみ、このブラウザ内に保存されます。本アプリから外部へ送信する仕組みはありません。「保存した生年月日を消す」を押すか、ブラウザのデータを削除すると消去されます。</li>
+        <li>名前（ふりがな）は、名前数の計算にのみ使用し、保存・送信はしません。</li>
+        <li>相性占いやタロットの文章は、一般的な傾向を示すものです。結果を個別に保証するものではありません。</li>
+      </ul>
+    </details>
+  </footer>
 </div>
 
 <script src="js/fortune-core.js"></script>
@@ -380,13 +417,6 @@ const EXPRESSION_NUMBERS = {
   33: { title: "奉仕・慈愛（マスターナンバー）", text: "人を癒し、導く使命を持っています。" }
 };
 const KANA_ORDER = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
-const NUM_COMPAT = {
-  5: "価値観がとても近く、お互いを自然に理解し合える組み合わせです。",
-  4: "似た部分が多く、穏やかで安定した関係を築きやすいです。",
-  3: "違いはあるものの、支え合うことでバランスが取れる関係です。",
-  2: "考え方が異なる場面もありますが、話し合いで新しい発見があります。",
-  1: "個性が強くぶつかることもありますが、互いに刺激を与え合える関係です。"
-};
 const MAJOR = [
   ["愚者", "自由と新しい始まり。純粋な気持ちで一歩踏み出す時です。", "軽率な行動や無計画さに注意が必要です。"],
   ["魔術師", "創造力と実行力。手元の資源を活かすと好機が訪れます。", "空回りや手段の選び方に迷いが生じています。"],
@@ -632,7 +662,7 @@ function buildNameSection() {
     ${unknownNote}`;
 }
 
-// ===== 数秘術・相性 =====
+// ===== 数秘術 =====
 function showNumerology() {
   const value = document.getElementById("numDate").value;
   if (!value) return showError("numResult", "生年月日を入力してください。");
@@ -668,34 +698,8 @@ function showNumerology() {
     <p>${monthInfo.advice}</p>
     ${buildNameSection()}`;
 }
-function showCouple() {
-  const a = document.getElementById("coupleA").value;
-  const b = document.getElementById("coupleB").value;
-  if (!a || !b) return showError("coupleResult", "2人分の生年月日を入力してください。");
-  const signA = getSignByDate(a);
-  const signB = getSignByDate(b);
-  let rel;
-  if (signA.element === signB.element) rel = ELEMENT_COMPAT.same;
-  else if (HARMONY_PAIRS.some(([x, y]) =>
-    (x === signA.element && y === signB.element) || (x === signB.element && y === signA.element))) rel = ELEMENT_COMPAT.harmony;
-  else rel = ELEMENT_COMPAT.challenge;
-  const diff = Math.abs(toBase(getLifePath(a)) - toBase(getLifePath(b)));
-  const numScore = Math.max(1, 5 - Math.min(diff, 4));
-  const overall = Math.round((rel.score + numScore) / 2);
-  const overallText = overall >= 4 ? "全体として相性は良好です。"
-    : overall === 3 ? "穏やかに支え合える関係です。"
-    : "違いを理解し合うことで、関係がさらに深まります。";
-  document.getElementById("coupleResult").innerHTML = `
-    <p><strong>星座：</strong>${signA.name}（${ELEMENTS[signA.element]}）× ${signB.name}（${ELEMENTS[signB.element]}）</p>
-    <div class="score-row"><span class="score-label">星座の相性</span><span class="stars">${stars(rel.score)}</span></div>
-    <p>${rel.text}</p>
-    <div class="score-row"><span class="score-label">数秘術の相性</span><span class="stars">${stars(numScore)}</span></div>
-    <p>${NUM_COMPAT[numScore]}</p>
-    <div class="score-row"><span class="score-label">総合評価</span><span class="stars">${stars(overall)}</span></div>
-    <p><strong>${overallText}</strong></p>`;
-}
 
-// ===== タロット =====
+// ===== タロット（表示の共通部分） =====
 let tarotTimers = [];
 function clearTarotTimers() {
   tarotTimers.forEach(clearTimeout);
@@ -735,120 +739,11 @@ function cardArtHtml(card) {
   return fallbackArtHtml(card);
 }
 
-// ===== 総合解釈の文章パターン =====
 const OPENERS = [
   "カードは今の流れをやさしく映し出しています。",
   "3枚のカードが、あなたの今を物語っています。",
   "静かに、カードのメッセージを受け取ってみましょう。"
 ];
-const CLOSERS = [
-  "結果を決めつけず、自分の選択を大切にしてください。",
-  "カードは道しるべです。最後に決めるのはあなた自身です。",
-  "今日できる小さな一歩から始めてみましょう。"
-];
-const TOPIC_WORDS = {
-  仕事: ["仕事", "転職", "会社", "職場", "キャリア"],
-  恋愛: ["恋", "恋愛", "彼", "彼女", "パートナー", "結婚"],
-  お金: ["お金", "収入", "給料", "貯金", "投資"],
-  健康: ["健康", "体", "体調", "睡眠"],
-  人間関係: ["人間関係", "友人", "家族", "相手"]
-};
-const TOPIC_LINES = {
-  仕事: ["仕事では、今の役割を見直すと流れが変わりそうです。", "職場での立ち位置を意識すると、評価につながりやすい時期です。"],
-  恋愛: ["恋愛では、相手の本音を丁寧に聞くことが鍵になりそうです。", "気持ちを言葉にすると、関係が前に進みやすくなります。"],
-  お金: ["お金の面では、無理のない計画を立てることが安心につながります。", "出費と収入のバランスを一度整理してみると良さそうです。"],
-  健康: ["体調のサインを大切にして、休息を取り入れましょう。", "生活リズムを整えることが、心と体の安定につながります。"],
-  人間関係: ["人間関係では、相手の立場を想像することが和らぎのきっかけになります。", "身近な人との対話を増やすと、安心感が生まれやすいです。"],
-  その他: ["今は焦らず、自分のペースで進めることが大切です。"]
-};
-function detectTopic(question) {
-  if (!question) return null;
-  for (const [topic, words] of Object.entries(TOPIC_WORDS)) {
-    if (words.some(w => question.includes(w))) return topic;
-  }
-  return "その他";
-}
-
-function buildTarotSummary(picks, question) {
-  const reversedCount = picks.filter(c => c.reversed).length;
-  const majorCount = picks.filter(c => c.type === "major").length;
-  const counts = {};
-  picks.forEach(c => { if (c.suit) counts[c.suit] = (counts[c.suit] || 0) + 1; });
-  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-
-  const lines = [pickRandom(OPENERS)];
-
-  if (majorCount >= 2) {
-    lines.push("大きな人生の転機が近づいているようです。出来事の意味を大切に受け止めましょう。");
-  } else if (dominant && dominant[1] >= 2) {
-    lines.push(`${SUITS[dominant[0]][0]}のカードが多く出ており、今は${SUITS[dominant[0]][3]}のようです。`);
-  } else {
-    lines.push("3枚のカードが異なるテーマを示しており、さまざまな要素が絡み合う流れです。");
-  }
-
-  const flow = [
-    "全体を通して追い風が吹いています。今の流れを信じて進みましょう。",
-    "一部に課題はありますが、意識して取り組めば乗り越えられます。",
-    "慎重に進めることが大切です。焦らず整えることで流れが変わります。",
-    "今は無理をせず、内面を見直すことが最善の選択になりそうです。"
-  ];
-  lines.push(flow[Math.min(reversedCount, 3)]);
-
-  const topic = detectTopic(question);
-  if (topic) lines.push(pickRandom(TOPIC_LINES[topic]));
-
-  const last = picks[2];
-  lines.push(`最後に示された「${last.name}」（${last.reversed ? "逆位置" : "正位置"}）は、${last.reversed ? last.rev : last.up}`);
-
-  lines.push(pickRandom(CLOSERS));
-
-  return `<strong>【総合解釈】</strong>` + lines.map(l => `<p>${escapeHtml(l)}</p>`).join("");
-}
-
-function drawTarot() {
-  clearTarotTimers();
-  const question = document.getElementById("question").value.trim();
-  const picks = shuffle(DECK).slice(0, 3).map(c => ({ ...c, reversed: Math.random() < 0.5 }));
-  const sigils = shuffle(PLANET_SIGILS).slice(0, 3);
-  const positions = ["過去・現在", "現在の状況", "これからの流れ"];
-
-  let html = question ? `<p><strong>質問：</strong>${escapeHtml(question)}</p>` : "";
-  picks.forEach((c, i) => {
-    const upText = c.upright ?? c.up;
-    const revText = c.reversed_text ?? c.rev;
-    html += `
-      <div class="tarot-slot shuffling" id="slot-${i}">
-        <div class="position">${positions[i]}</div>
-        <div class="tarot-flip">
-          <div class="face front">
-            <div class="name">${c.name}
-              <span class="orientation ${c.reversed ? "reversed-label" : "upright"}">${c.reversed ? "逆位置" : "正位置"}</span>
-            </div>
-            <div class="card-art ${c.reversed ? "art-rev" : ""}">${cardArtHtml(c)}</div>
-            <p>${c.reversed ? revText : upText}</p>
-          </div>
-          <div class="face back" style="--sigil: '${sigils[i]}'"></div>
-        </div>
-      </div>`;
-  });
-  html += `<div class="summary pending" id="tarotSummary">${buildTarotSummary(picks, question)}</div>`;
-  document.getElementById("tarotResult").innerHTML = html;
-
-  tarotTimers.push(setTimeout(() => {
-    picks.forEach((_, i) => {
-      tarotTimers.push(setTimeout(() => {
-        const slot = document.getElementById(`slot-${i}`);
-        slot.classList.remove("shuffling");
-        slot.querySelector(".tarot-flip").classList.add("flipped");
-      }, i * 700));
-    });
-    tarotTimers.push(setTimeout(() => {
-      const s = document.getElementById("tarotSummary");
-      s.classList.remove("pending");
-      s.classList.add("reveal");
-    }, picks.length * 700 + 600));
-  }, 1000));
-}
 
 // ===== 月の満ち欠け =====
 function renderMoon() {
@@ -874,8 +769,7 @@ document.querySelectorAll(".tab-btn").forEach(tab => {
 document.getElementById("dailyBtn").addEventListener("click", showDaily);
 document.getElementById("zodiacBtn").addEventListener("click", showZodiac);
 document.getElementById("numBtn").addEventListener("click", showNumerology);
-document.getElementById("coupleBtn").addEventListener("click", showCouple);
-document.getElementById("drawBtn").addEventListener("click", drawTarot);
+// 相性占い（coupleBtn）とタロット（drawBtn）は、それぞれ専用のJSで処理を設定しています。
 setupBirthdaySave();
 renderMoon();
 </script>
