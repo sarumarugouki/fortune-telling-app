@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>占いアプリ（プレビュー）</title>
+<style>
+  :root {
+    --gold: #ffd98a;
+    --gold-soft: rgba(255, 217, 138, 0.25);
+    --ink: #0b0a1a;
+    --mist: #bdb5e0;
+    --text: #ece6ff;
+    --panel: rgba(28, 22, 64, 0.72);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "MS PMincho", serif;
+    color: var(--text); margin: 0; padding: 24px 16px 40px; line-height: 1.8; min-height: 100vh;
+    overflow-x: hidden;
+    background: radial-gradient(ellipse at top, #3b2a6e 0%, #1c1440 45%, var(--ink) 100%) fixed;
+  }
+  body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1; }
+  body::before {
+    background-image:
+      radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+      radial-gradient(1px 1px at 120px 80px, #ffe9b0, transparent),
+      radial-gradient(1.5px 1.5px at 60px 140px, #fff, transparent),
+      radial-gradient(1px 1px at 180px 20px, #d8ccff, transparent),
+      radial-gradient(1px 1px at 240px 160px, #fff, transparent);
+    background-size: 260px 200px; opacity: 0.7;
+  }
+  body::after {
+    background-image:
+      radial-gradient(2px 2px at 90px 120px, #ffd98a, transparent),
+      radial-gradient(2px 2px at 210px 50px, #ffd98a, transparent);
+    background-size: 330px 260px; animation: twinkle 6s ease-in-out infinite;
+  }
+  @keyframes twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  h1 {
+    text-align: center; font-size: 30px; letter-spacing: 0.25em; margin: 8px 0 14px;
+    background: linear-gradient(90deg, #fff3d0, var(--gold), #fff3d0);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 18px rgba(255, 217, 138, 0.35);
+  }
+  h1::before { content: "☾  "; -webkit-text-fill-color: var(--gold); }
+  h1::after { content: "  ☽"; -webkit-text-fill-color: var(--gold); }
+  h2 {
+    color: var(--gold); margin: 0 0 14px; font-size: 20px; letter-spacing: 0.1em;
+    padding-bottom: 8px; border-bottom: 1px solid var(--gold-soft);
+  }
+  h3 { color: var(--gold); font-size: 17px; margin: 18px 0 6px; letter-spacing: 0.05em; }
+  .container { max-width: 660px; margin: 0 auto; }
+
+  .moon-wrap { text-align: center; margin: 4px 0 20px; }
+  .moon {
+    width: 84px; height: 84px; margin: 0 auto; border-radius: 50%; position: relative; overflow: hidden;
+    background: radial-gradient(circle at 35% 35%, #fffaf0, #e8dcb8 70%);
+    box-shadow: 0 0 40px rgba(255, 240, 200, 0.4);
+  }
+  .moon-shadow { position: absolute; inset: 0; border-radius: 50%; background: #120e2e; transition: transform 1.2s ease; }
+  .moon-label { margin: 8px 0 0; color: var(--mist); font-size: 14px; letter-spacing: 0.1em; }
+
+  .card-box {
+    background: var(--panel); border: 1px solid var(--gold-soft); border-radius: 18px; padding: 24px; margin-bottom: 22px;
+    box-shadow: 0 0 24px rgba(140, 100, 255, 0.18), inset 0 0 40px rgba(255, 217, 138, 0.04);
+  }
+  label { display: block; margin: 10px 0 6px; color: var(--mist); font-size: 15px; }
+  input {
+    width: 100%; padding: 10px 12px; font-size: 16px; font-family: inherit; color: var(--text);
+    background: rgba(10, 8, 30, 0.6); border: 1px solid rgba(255, 217, 138, 0.3);
+    border-radius: 10px; margin-bottom: 14px; outline: none; color-scheme: dark;
+  }
+  input:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 217, 138, 0.35); }
+  input::placeholder { color: #7f78a8; }
+  input[type="checkbox"] { width: auto; margin: 0 8px 0 0; }
+  button {
+    font-family: inherit; font-size: 16px; letter-spacing: 0.08em; padding: 10px 22px; border: none;
+    border-radius: 999px; cursor: pointer; font-weight: bold; color: #2a1d4a;
+    background: linear-gradient(135deg, #fff1c4, var(--gold) 50%, #e8b65a);
+    box-shadow: 0 0 14px rgba(255, 217, 138, 0.3); transition: transform 0.2s, box-shadow 0.2s;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(255, 217, 138, 0.6); }
+
+  .birthday-box { padding: 18px 24px; }
+  .check-row { display: flex; align-items: center; color: var(--mist); margin: 10px 0; }
+  .birthday-box button { margin-top: 4px; }
+  .birthday-box .small { margin-top: 10px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 24px; }
+  .tab-btn {
+    background: rgba(40, 32, 90, 0.7); color: var(--mist); font-weight: normal; padding: 8px 16px;
+    border: 1px solid rgba(255, 217, 138, 0.2); box-shadow: none;
+  }
+  .tab-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #fff1c4, var(--gold) 50%, #e8b65a); color: #2a1d4a;
+    font-weight: bold; border-color: var(--gold); box-shadow: 0 0 18px rgba(255, 217, 138, 0.5);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .result { margin-top: 18px; }
+  .result > * { animation: fadeUp 0.7s ease both; }
+  .stars { color: var(--gold); font-size: 20px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(255, 217, 138, 0.6); }
+  .score-row { margin: 10px 0; }
+  .score-label { display: inline-block; min-width: 100px; color: var(--mist); }
+  .small { font-size: 13px; color: var(--mist); opacity: 0.85; }
+  .error { color: #ffb3c1; border-left: 3px solid #ffb3c1; padding-left: 12px; }
+
+  .card-art {
+    height: 130px; margin: 12px 0; border-radius: 10px; border: 1px solid var(--gold-soft);
+    background: radial-gradient(circle at 50% 40%, rgba(90, 70, 160, 0.5), rgba(15, 10, 40, 0.9) 75%);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; transition: transform 0.4s ease;
+  }
+  .card-art.art-rev { transform: rotate(180deg); }
+  .card-art svg {
+    width: 64px; height: 64px; fill: none; stroke: var(--gold); stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 8px rgba(255, 217, 138, 0.6));
+  }
+  .art-glyph { font-size: 64px; color: var(--gold); text-shadow: 0 0 14px rgba(255, 217, 138, 0.7); line-height: 1; }
+
+  .tarot-slot { position: relative; margin: 14px 0; animation: fadeUp 0.7s ease both; }
+  .tarot-slot.shuffling { animation: sway 0.9s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform: rotate(-1.5deg); } to { transform: rotate(1.5deg); } }
+  .tarot-slot > .position { font-size: 13px; color: var(--mist); letter-spacing: 0.1em; margin-bottom: 4px; }
+  .tarot-flip { position: relative; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .tarot-flip.flipped { transform: rotateY(180deg); }
+  .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; }
+  .face.front {
+    position: relative; transform: rotateY(180deg); animation: none;
+    background: linear-gradient(160deg, rgba(60, 40, 120, 0.65), rgba(20, 14, 50, 0.85));
+    border: 1px solid var(--gold); padding: 16px 18px; box-shadow: 0 0 20px rgba(255, 217, 138, 0.15);
+  }
+  .face.front .name { font-size: 20px; font-weight: bold; color: #fff3d0; margin: 4px 0; }
+  .face.back {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 48px; color: var(--gold); border: 1px solid var(--gold);
+    background: radial-gradient(circle at 50% 40%, #4a3a8a, #1c1440 70%);
+    box-shadow: inset 0 0 30px rgba(255, 217, 138, 0.15);
+  }
+  .face.back::before { content: var(--sigil, "☾"); text-shadow: 0 0 16px rgba(255, 217, 138, 0.6); }
+  .face.back::after {
+    content: ""; position: absolute; inset: 10px; border: 1px dashed rgba(255, 217, 138, 0.35);
+    border-radius: 10px; pointer-events: none;
+  }
+  @keyframes glowIn {
+    0% { box-shadow: 0 0 0 rgba(255, 217, 138, 0); }
+    40% { box-shadow: 0 0 40px rgba(255, 240, 200, 0.9); }
+    100% { box-shadow: 0 0 20px rgba(255, 217, 138, 0.15); }
+  }
+  @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .tarot-flip.flipped .face.front { animation: glowIn 1.4s ease 0.4s both; }
+  .tarot-flip.flipped .face.front::before {
+    content: ""; position: absolute; inset: 0; border-radius: 14px;
+    background: linear-gradient(115deg, transparent 40%, rgba(255, 245, 210, 0.45) 50%, transparent 60%);
+    transform: translateX(-100%); animation: sweep 1s ease 0.5s forwards; pointer-events: none;
+  }
+  .orientation { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .upright { background: rgba(120, 200, 150, 0.25); border: 1px solid rgba(120, 200, 150, 0.6); color: #cfffe0; }
+  .reversed-label { background: rgba(200, 110, 160, 0.25); border: 1px solid rgba(200, 110, 160, 0.6); color: #ffd6ec; }
+  .summary {
+    background: rgba(20, 16, 50, 0.7); border-left: 3px solid var(--gold); border-radius: 12px;
+    padding: 18px; margin-top: 22px; box-shadow: inset 0 0 30px rgba(255, 217, 138, 0.05);
+  }
+  .summary p { margin: 8px 0; }
+  .summary.pending { display: none; }
+  .summary.reveal { animation: fadeUp 0.8s ease both; }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 24px; letter-spacing: 0.15em; }
+    .card-box { padding: 18px; }
+    .tab-btn { font-size: 14px; padding: 7px 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>占いアプリ</h1>
+  <div class="moon-wrap">
+    <div class="moon"><div class="moon-shadow" id="moonShadow"></div></div>
+    <p class="moon-label" id="moonLabel"></p>
+  </div>
+
+  <div class="card-box birthday-box">
+    <label for="myBirthday">自分の生年月日（占いの入力に自動で入ります）</label>
+    <input type="date" id="myBirthday">
+    <label class="check-row">
+      <input type="checkbox" id="saveBirthday">
+      この端末に保存する
+    </label>
+    <button id="clearBirthday" type="button">保存した生年月日を消す</button>
+    <p class="small">保存先はこのブラウザの中だけで、外部には送信されません。</p>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-target="panel-daily">今日の総合運</button>
+    <button class="tab-btn" data-target="panel-zodiac">星座占い</button>
+    <button class="tab-btn" data-target="panel-numerology">数秘術</button>
+    <button class="tab-btn" data-target="panel-couple">相性占い</button>
+    <button class="tab-btn" data-target="panel-tarot">タロット</button>
+  </nav>
+
+  <section class="tab-panel active" id="panel-daily">
+    <div class="card-box">
+      <h2>今日の総合運</h2>
+      <label for="dailyDate">生年月日</label>
+      <input type="date" id="dailyDate">
+      <button id="dailyBtn">今日の運勢を見る</button>
+      <div class="result" id="dailyResult"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="panel-zodiac">
+    <div class="card-box">
+      <h2>星座占い</h2>
+      <label for="zodiacDate">生年月日</label>
+      <input type="date" id="zodiacDate">
+      <button id="zodiacBtn">星座を占う</button>
+      <div class="result" id="zodiacResult"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="panel-numerology">
+    <div class="card-box">
+      <h2>数秘術</h2>
+      <label for="numDate">生年月日</label>
+      <input type="date" id="numDate">
+      <label for="nameReading">ふりがな（ひらがな・カタカナ）※名前数を見る場合</label>
+      <input type="text" id="nameReading" placeholder="例：やまだたろう">
+      <button id="numBtn">数秘術で占う</button>
+      <div class="result" id="numResult"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="panel-couple">
+    <div class="card-box">
+      <h2>相性占い</h2>
+      <label for="coupleA">あなたの生年月日</label>
+      <input type="date" id="coupleA">
+      <label for="coupleB">相手の生年月日</label>
+      <input type="date" id="coupleB">
+      <button id="coupleBtn">相性を見る</button>
+      <div class="result" id="coupleResult"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="panel-tarot">
+    <div class="card-box">
+      <h2>タロット（3枚引き）</h2>
+      <label for="question">質問（任意）</label>
+      <input type="text" id="question" placeholder="例：今月の仕事運は？">
+      <button id="drawBtn">カードを引く</button>
+      <div class="result" id="tarotResult"></div>
+    </div>
+  </section>
+
+  <p class="small" style="text-align:center;">※ 占いは娯楽としてお楽しみください。（プレビュー版：データは簡易版です）</p>
+</div>
+
+<script>
+const NAME_FEATURE_ENABLED = true;
+const STORAGE_KEY = "fortuneApp.birthday";
+const SAVE_PREF_KEY = "fortuneApp.savePref";
+const BIRTHDAY_INPUT_IDS = ["dailyDate", "zodiacDate", "numDate", "coupleA"];
+
+const ELEMENTS = { fire: "火", earth: "地", air: "風", water: "水" };
+const SIGNS = [
+  { name: "牡羊座", element: "fire", keywords: "情熱・挑戦・行動力", messages: ["思い立ったらすぐ動くと、良い流れが生まれます。", "勢いに任せた判断は、一呼吸おいてから。"] },
+  { name: "牡牛座", element: "earth", keywords: "安定・誠実・豊かさ", messages: ["身近な心地よさを大切にすると運気が整います。", "焦らず一歩ずつ進めることが成果につながります。"] },
+  { name: "双子座", element: "air", keywords: "好奇心・会話・柔軟さ", messages: ["気になった情報に触れると、ヒントが見つかります。", "気持ちを言葉にすると、すっきりした一日になります。"] },
+  { name: "蟹座", element: "water", keywords: "思いやり・家族・直感", messages: ["大切な人を気遣うことで、心が満たされます。", "直感を信じてみると良い結果が出やすいです。"] },
+  { name: "獅子座", element: "fire", keywords: "自信・表現・華やかさ", messages: ["自分らしさを出すと、周りの注目が集まります。", "好きなことを楽しむと運気が高まります。"] },
+  { name: "乙女座", element: "earth", keywords: "丁寧・分析・誠実", messages: ["細かな点に気づけると、信頼が深まります。", "完璧を求めすぎず、自分を認めましょう。"] },
+  { name: "天秤座", element: "air", keywords: "調和・美意識・協調", messages: ["バランスの取れた判断が良い結果を導きます。", "身の回りを整えると気分が上がります。"] },
+  { name: "蠍座", element: "water", keywords: "情熱・洞察力・深い絆", messages: ["本音で向き合うことで、関係が深まります。", "感情を整理する時間を持つと、心が軽くなります。"] },
+  { name: "射手座", element: "fire", keywords: "自由・冒険・楽観", messages: ["新しい場所や考え方に触れると刺激があります。", "行動範囲を広げると、良い出会いがありそうです。"] },
+  { name: "山羊座", element: "earth", keywords: "努力・責任感・計画性", messages: ["コツコツ積み上げた努力が認められやすい日です。", "今は我慢の時。着実な歩みが未来を支えます。"] },
+  { name: "水瓶座", element: "air", keywords: "独創性・自由・友情", messages: ["ひらめきを形にすると、周りの共感を得られます。", "友人との交流が気分転換になりそうです。"] },
+  { name: "魚座", element: "water", keywords: "共感・想像力・優しさ", messages: ["相手の気持ちに寄り添うと、関係が和らぎます。", "疲れを感じたら、静かな時間を大切にしましょう。"] }
+];
+const HARMONY_PAIRS = [["fire", "air"], ["earth", "water"]];
+const ELEMENT_COMPAT = {
+  same: { score: 4, text: "価値観や感じ方が近く、自然に理解し合える組み合わせです。" },
+  harmony: { score: 5, text: "互いに足りないものを補い合える、刺激的で心地よい組み合わせです。" },
+  challenge: { score: 2, text: "考え方が異なるため、歩み寄りが大切になります。違いは成長の種にもなります。" }
+};
+const LIFE_PATHS = {
+  1: { title: "リーダーの数", keywords: "独立・開拓・主体性", text: "自分で道を切り開く力を持つ人です。", strengths: "行動力、決断力、自立心", challenges: "独断的になること、人に頼れないこと", love: "対等でありながら、自分の意思を持てるパートナーと良い関係を築けます。", career: "起業、企画、リーダー職など、主導権を持てる仕事に向いています。" },
+  2: { title: "調和の数", keywords: "協調・共感・バランス", text: "周囲の気持ちを敏感に感じ取り、関係を大切にする人です。", strengths: "聞く力、協調性、細やかな気配り", challenges: "自分の意見を後回しにしがちなこと", love: "思いやりを分かち合える関係で、安心感を得られます。", career: "サポート役、カウンセリング、チームの調整役などに向いています。" },
+  3: { title: "表現の数", keywords: "創造・会話・楽しさ", text: "言葉や表現を通じて人を惹きつける人です。", strengths: "表現力、ユーモア、社交性", challenges: "気分が散りやすく、飽きやすいこと", love: "会話や笑いを大切にできる相手と、楽しく過ごせます。", career: "文章、デザイン、接客、発信の仕事などに向いています。" },
+  4: { title: "堅実の数", keywords: "努力・誠実・安定", text: "地道にコツコツ積み上げることで、信頼を得る人です。", strengths: "忍耐力、責任感、計画性", challenges: "融通が利かず、頑固に見られやすいこと", love: "誠実で、一緒に生活を築ける相手と安定した関係を育てられます。", career: "事務、技術職、管理職など、計画と継続が活きる仕事に向いています。" },
+  5: { title: "自由の数", keywords: "変化・冒険・好奇心", text: "新しい経験や変化を求めて動く人です。", strengths: "適応力、行動力、好奇心", challenges: "飽きやすく、落ち着くことが苦手なこと", love: "刺激と自由を尊重し合える関係が心地よく感じられます。", career: "旅行、営業、マーケティングなど、変化のある仕事に向いています。" },
+  6: { title: "愛情の数", keywords: "責任・思いやり・家庭", text: "身近な人を大切にし、支えることに喜びを感じる人です。", strengths: "愛情深さ、責任感、面倒見の良さ", challenges: "周囲を抱え込みすぎて、疲れやすいこと", love: "家族や大切な人との絆を深められます。", career: "教育、福祉、医療、家庭に関わる仕事に向いています。" },
+  7: { title: "探求の数", keywords: "分析・内省・直感", text: "物事の本質を深く考える人です。", strengths: "洞察力、分析力、集中力", challenges: "心を閉ざしやすく、孤独を感じやすいこと", love: "深い会話ができる、落ち着いた関係が合います。", career: "研究、専門職、分析、執筆など、深く考える仕事に向いています。" },
+  8: { title: "実現の数", keywords: "達成・影響力・豊かさ", text: "目標を実現し、現実を動かす力を持つ人です。", strengths: "実行力、経営感覚、粘り強さ", challenges: "成果を急ぎ、仕事中心になりすぎること", love: "互いの努力を認め合える、対等なパートナーシップが安定します。", career: "経営、金融、プロジェクト管理など、大きな責任を担う仕事に向いています。" },
+  9: { title: "博愛の数", keywords: "奉仕・寛大さ・完成", text: "広い視野で、人や社会のために動ける人です。", strengths: "共感力、寛容さ、奉仕の心", challenges: "感情を抱え込んだり、理想を求めすぎたりすること", love: "お互いの成長を応援し合える関係が理想です。", career: "社会貢献、教育、芸術、国際的な仕事などに向いています。" },
+  11: { title: "直感の数（マスターナンバー）", keywords: "直感・理想・霊感", text: "感受性が豊かで、インスピレーションを大切にする人です。", strengths: "直感力、表現力、人を励ます力", challenges: "神経質になりやすく、理想と現実のギャップに悩みやすいこと", love: "心の深いつながりを求め、精神的に理解し合える関係が合います。", career: "カウンセリング、芸術、表現活動、ヒーリングなどに向いています。" },
+  22: { title: "建設の数（マスターナンバー）", keywords: "実現・大きな計画・構築", text: "夢を現実の形にする力を持つ人です。", strengths: "構想力、実行力、組織をまとめる力", challenges: "プレッシャーを抱えやすく、完璧を求めすぎること", love: "信頼と協力に基づく、長く続く関係を築けます。", career: "大規模な事業、建築、社会的プロジェクトなどに向いています。" },
+  33: { title: "奉仕の数（マスターナンバー）", keywords: "癒し・導き・慈愛", text: "人を導き、癒すことに使命感を持つ人です。", strengths: "慈愛、共感、人を導く力", challenges: "自分を犠牲にしすぎて、疲れやすいこと", love: "無条件の愛情と、互いを尊重する関係が理想です。", career: "教育、医療、福祉、ボランティアなど、人の支えになる仕事に向いています。" }
+};
+const BIRTHDAY_NUMBERS = {
+  1: "自立心が強く、自分の力で道を開く資質があります。",
+  2: "人との調和を大切にし、支え合う力があります。",
+  3: "明るく表現力豊かで、周囲を楽しませる力があります。",
+  4: "誠実で堅実。信頼を積み重ねるタイプです。",
+  5: "柔軟で好奇心旺盛。変化を楽しむ力があります。",
+  6: "面倒見がよく、大切な人を守る力があります。",
+  7: "鋭い洞察力を持ち、物事の本質を見抜きます。",
+  8: "現実を動かす力があり、リーダーシップを発揮します。",
+  9: "人への思いやりが深く、大きな視野を持ちます。",
+  11: "直感力が鋭く、人の心に響く表現ができます。",
+  22: "大きな計画を形にする力を秘めています。"
+};
+const PERSONAL_NUMBERS = {
+  1: { theme: "新しい始まり", advice: "自分から一歩踏み出す時期です。" },
+  2: { theme: "協力と準備", advice: "人との関係を整え、焦らず育てる時期です。" },
+  3: { theme: "表現と広がり", advice: "発信や交流で楽しさを広げられる時期です。" },
+  4: { theme: "基礎固め", advice: "地道な努力と整理が、将来の土台になります。" },
+  5: { theme: "変化と挑戦", advice: "環境や考え方を変えることで、流れが動きます。" },
+  6: { theme: "家庭と責任", advice: "身近な人や暮らしを大切にする時期です。" },
+  7: { theme: "内省と学び", advice: "立ち止まって考え、知識や感性を深めましょう。" },
+  8: { theme: "成果と評価", advice: "努力が形になり、実績や豊かさにつながります。" },
+  9: { theme: "区切りと手放し", advice: "終わりを受け入れ、次の準備を整える時期です。" }
+};
+const EXPRESSION_NUMBERS = {
+  1: { title: "独立・先駆者", text: "行動力と独創性で道を切り開く名前です。" },
+  2: { title: "協調・支え", text: "人の間に入り、調和をもたらす力を持ちます。" },
+  3: { title: "表現・明るさ", text: "言葉や感性で周囲を楽しませる力があります。" },
+  4: { title: "堅実・誠実", text: "信頼と努力で、形を作っていく力を持ちます。" },
+  5: { title: "自由・変化", text: "柔軟に動き、新しい可能性を広げる力があります。" },
+  6: { title: "愛情・責任", text: "人を支え、家庭や組織を守る力があります。" },
+  7: { title: "探求・知性", text: "深く考え、専門性を磨く力があります。" },
+  8: { title: "実現・力強さ", text: "目標を実行し、成果を形にする力があります。" },
+  9: { title: "博愛・完成", text: "広い視野で人を導き、社会に貢献する力があります。" },
+  11: { title: "直感・霊感（マスターナンバー）", text: "感性と表現力で、人の心を動かす力があります。" },
+  22: { title: "建設・大望（マスターナンバー）", text: "大きな計画を実現する力を秘めています。" },
+  33: { title: "奉仕・慈愛（マスターナンバー）", text: "人を癒し、導く使命を持っています。" }
+};
+const KANA_ORDER = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+const NUM_COMPAT = {
+  5: "価値観がとても近く、お互いを自然に理解し合える組み合わせです。",
+  4: "似た部分が多く、穏やかで安定した関係を築きやすいです。",
+  3: "違いはあるものの、支え合うことでバランスが取れる関係です。",
+  2: "考え方が異なる場面もありますが、話し合いで新しい発見があります。",
+  1: "個性が強くぶつかることもありますが、互いに刺激を与え合える関係です。"
+};
+const DAILY_DAYS = {
+  1: [4, "新しいスタートに向いた日", "小さなことでも自分から動いてみましょう。"],
+  2: [3, "協力と対話の日", "相手の話を最後まで聞くと、良い流れが生まれます。"],
+  3: [4, "表現と交流の日", "感じたことを言葉にすると、距離が縮まります。"],
+  4: [3, "地道に整える日", "手つかずの作業を一つ片付けると気持ちが軽くなります。"],
+  5: [4, "変化と出会いの日", "いつもと違う話題に、少し触れてみましょう。"],
+  6: [4, "思いやりと家庭の日", "身近な人への感謝を伝えると、運気が高まります。"],
+  7: [3, "内省と学びの日", "静かな時間を作り、考えを整理しましょう。"],
+  8: [5, "実りと行動の日", "目標に対して一歩踏み込むと、手応えが得られます。"],
+  9: [2, "区切りと手放しの日", "終わったことに区切りをつけましょう。"]
+};
+const DAILY_ELEMENT_TIPS = {
+  fire: "情熱を外に向けると、良い刺激が得られます。",
+  earth: "現実的な確認を一つ入れると、安心して進めます。",
+  air: "情報の整理や人との会話が、流れを作ってくれます。",
+  water: "感情を大切にしつつ、無理のない休息を取りましょう。"
+};
+const LUCKY_COLORS = [
+  ["赤", "行動力とやる気を高めます"], ["オレンジ", "人との交流を明るくします"],
+  ["黄色", "思考と発想を広げます"], ["緑", "心の安らぎと調和をもたらします"],
+  ["青", "落ち着きと冷静な判断を助けます"], ["紫", "直感と内省を深めます"],
+  ["白", "気持ちをリセットし、整えます"], ["ピンク", "優しさと思いやりを引き出します"],
+  ["金色", "自信と豊かさを引き寄せます"]
+];
+const MAJOR = [
+  ["愚者", "自由と新しい始まり。純粋な気持ちで一歩踏み出す時です。", "軽率な行動や無計画さに注意が必要です。"],
+  ["魔術師", "創造力と実行力。手元の資源を活かすと好機が訪れます。", "空回りや手段の選び方に迷いが生じています。"],
+  ["女教皇", "直感と静かな知性。内面の声に耳を傾けましょう。", "本音が見えにくく、感情を抑えがちです。"],
+  ["女帝", "豊かさと育成。人間関係や創作活動が実を結びます。", "依存しすぎたり、停滞したりする傾向があります。"],
+  ["皇帝", "安定と責任。計画的に進めることで信頼を得られます。", "支配的になったり、頑固さが出やすい時です。"],
+  ["教皇", "導きと学び。信頼できる人の助言が役立ちます。", "形式にとらわれ、柔軟性を失いやすくなっています。"],
+  ["恋人", "愛と選択。心の声を基準に決断すると良い結果に繋がります。", "価値観のズレや迷いが生じやすい時です。"],
+  ["戦車", "前進と勝利。強い意志が道を切り開きます。", "勢いが暴走したり、方向性を見失ったりしやすい状態です。"],
+  ["力", "忍耐と優しさ。穏やかな強さが状況を好転させます。", "自信のなさや無理な我慢が出ている可能性があります。"],
+  ["隠者", "内省と探求。立ち止まって自分を見つめ直す時です。", "孤立や閉じこもりに注意しましょう。"],
+  ["運命の輪", "好機と転換。流れの変化を上手に捉えましょう。", "悪循環に陥りやすい時です。"],
+  ["正義", "公正と誠実。正しい判断が結果を導きます。", "判断の偏りがないか見直しましょう。"],
+  ["吊された男", "視点の転換と奉仕。待つことで新しい見方が得られます。", "我慢が無駄になりやすい時です。"],
+  ["死神", "終わりと再生。古いものを手放すと新しい流れが生まれます。", "変化への抵抗があり、手放せずにいる状態です。"],
+  ["節制", "調和と節度。無理のないバランスを大切にしましょう。", "極端な行動や、バランスの乱れが出やすい時です。"],
+  ["悪魔", "執着と誘惑。自分を縛るものに気づくことが大切です。", "束縛から少しずつ解放される時です。"],
+  ["塔", "突然の変化と覚醒。混乱の後に真実が見えてきます。", "変化を先延ばしにすると負担が大きくなります。"],
+  ["星", "希望と癒し。前向きな気持ちが未来を照らします。", "自信を失いやすい時です。"],
+  ["月", "不安と想像。迷いがある時は慎重に判断しましょう。", "不安が和らぎ、本当の姿が見えてくる時です。"],
+  ["太陽", "成功と喜び。明るいエネルギーが周りにも広がります。", "一時的に喜びが曇る可能性があります。"],
+  ["審判", "覚醒と再出発。過去を振り返り、新しい一歩へ進みましょう。", "後悔が足かせになりやすい時です。"],
+  ["世界", "完成と達成。ひとつの区切りを迎え、次の段階へ進む時です。", "あと一歩のところで足踏みしている状態です。"]
+];
+const SUITS = {
+  wands: ["ワンド", "情熱とエネルギーが高まり、", "熱意が空回りし、", "行動力を活かす時期"],
+  cups: ["カップ", "感情や人間関係が豊かに動き、", "感情の混乱や行き違いが生じ、", "人間関係や感情面に気を配る時期"],
+  swords: ["ソード", "思考や判断が冴え、", "考えすぎや誤解が生じ、", "考えを整理し、言葉を選ぶ時期"],
+  pentacles: ["ペンタクル", "現実的な成果や金銭面が安定へ向かい、", "物質面で停滞や不安があり、", "堅実な計画が運を支える時期"]
+};
+const RANKS = [
+  ["エース", "新しい始まりです。", "出鼻をくじかれやすい状態です。"],
+  ["2", "選択と均衡の時です。", "迷いが生じやすい状態です。"],
+  ["3", "成長と広がりが期待できます。", "停滞しやすい状態です。"],
+  ["4", "安定と休息の時です。", "落ち着かず不安定になりやすいです。"],
+  ["5", "試練や葛藤がありますが、学びがあります。", "争いや不満が残りやすいです。"],
+  ["6", "調和と前進の時です。", "過去にとらわれやすい状態です。"],
+  ["7", "挑戦と守りの時です。", "疲れや諦めが出やすい状態です。"],
+  ["8", "変化と進展が見込めます。", "焦りや停滞が生じやすい状態です。"],
+  ["9", "達成が近づいています。", "不安や警戒心が強まりやすいです。"],
+  ["10", "完成と区切りの時です。", "負担が積み重なっている状態です。"],
+  ["ペイジ", "学びと知らせが届きます。", "未熟さや寄り道が目立つ状態です。"],
+  ["ナイト", "行動と勢いが生まれます。", "空回りしやすい状態です。"],
+  ["クイーン", "成熟と共感の力があります。", "過敏になったり依存が生じやすいです。"],
+  ["キング", "統率と責任の力があります。", "独善的になりやすい状態です。"]
+];
+const DECK = [
+  ...MAJOR.map(m => ({ name: m[0], up: m[1], rev: m[2], type: "major", suit: null })),
+  ...Object.entries(SUITS).flatMap(([key, s]) =>
+    RANKS.map(r => ({ name: `${s[0]}の${r[0]}`, up: s[1] + r[1], rev: s[2] + r[2], type: "minor", suit: key }))
+  )
+];
+const MAJOR_GLYPHS = {
+  "愚者": "❂", "魔術師": "∞", "女教皇": "☽", "女帝": "♀", "皇帝": "♂", "教皇": "✞",
+  "恋人": "♡", "戦車": "⚔", "力": "♨", "隠者": "✧", "運命の輪": "☸", "正義": "⚖",
+  "吊された男": "♆", "死神": "⚰", "節制": "⚗", "悪魔": "⛧", "塔": "♜", "星": "★",
+  "月": "☾", "太陽": "☀", "審判": "✉", "世界": "◎"
+};
+const SUIT_ICONS = {
+  wands: `<svg viewBox="0 0 40 40"><path d="M20 4 V36"/><path d="M20 12 C26 6 30 10 30 14 C25 16 21 14 20 12"/><path d="M20 22 C14 16 10 20 10 24 C15 26 19 24 20 22"/></svg>`,
+  cups: `<svg viewBox="0 0 40 40"><path d="M9 8 H31 Q31 26 20 28 Q9 26 9 8 Z"/><path d="M20 28 V35"/><path d="M13 36 H27"/></svg>`,
+  swords: `<svg viewBox="0 0 40 40"><path d="M20 3 L23 25 L20 29 L17 25 Z"/><path d="M11 28 H29"/><path d="M20 29 V37"/></svg>`,
+  pentacles: `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16"/><path d="M20 8 L23.5 27 L8.5 16 H31.5 L16.5 27 Z"/></svg>`
+};
+const PLANET_SIGILS = ["☉", "☽", "☿", "♀", "♂", "♃", "♄", "♅", "♆", "♇"];
+const ZODIAC_TABLE = [
+  [1, 19, "山羊座"], [2, 18, "水瓶座"], [3, 20, "魚座"], [4, 19, "牡羊座"], [5, 20, "牡牛座"], [6, 21, "双子座"],
+  [7, 22, "蟹座"], [8, 22, "獅子座"], [9, 22, "乙女座"], [10, 23, "天秤座"], [11, 22, "蠍座"], [12, 21, "射手座"]
+];
+
+// ===== 共通 =====
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function parseDate(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return { year: y, month: m, day: d };
+}
+function showError(id, msg) {
+  document.getElementById(id).innerHTML = `<p class="error">${escapeHtml(msg)}</p>`;
+}
+function stars(n) { return "★".repeat(n) + "☆".repeat(5 - n); }
+function todayIndex(len) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  return Math.floor((now - start) / 86400000) % len;
+}
+function todayString() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ===== 生年月日の保存（この端末の中だけ） =====
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch (e) {}
+}
+function isValidDateString(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+function applyBirthday(value) {
+  document.getElementById("myBirthday").value = value;
+  BIRTHDAY_INPUT_IDS.forEach(id => {
+    document.getElementById(id).value = value;
+  });
+}
+function setupBirthdaySave() {
+  const myInput = document.getElementById("myBirthday");
+  const saveCheck = document.getElementById("saveBirthday");
+  const clearBtn = document.getElementById("clearBirthday");
+
+  saveCheck.checked = storageGet(SAVE_PREF_KEY) !== "0";
+
+  if (saveCheck.checked) {
+    const saved = storageGet(STORAGE_KEY);
+    if (isValidDateString(saved)) applyBirthday(saved);
+    else if (saved !== null) storageRemove(STORAGE_KEY);
+  }
+
+  const onBirthdayInput = () => {
+    const value = myInput.value;
+    if (!isValidDateString(value)) return;
+    applyBirthday(value);
+    if (saveCheck.checked) storageSet(STORAGE_KEY, value);
+  };
+  myInput.addEventListener("change", onBirthdayInput);
+  myInput.addEventListener("input", onBirthdayInput);
+
+  saveCheck.addEventListener("change", () => {
+    storageSet(SAVE_PREF_KEY, saveCheck.checked ? "1" : "0");
+    if (saveCheck.checked) {
+      if (isValidDateString(myInput.value)) storageSet(STORAGE_KEY, myInput.value);
+    } else {
+      storageRemove(STORAGE_KEY);
+    }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    storageRemove(STORAGE_KEY);
+    myInput.value = "";
+    BIRTHDAY_INPUT_IDS.forEach(id => {
+      document.getElementById(id).value = "";
+    });
+  });
+}
+
+// ===== 数秘術の計算 =====
+function digitSum(n) {
+  return String(n).split("").map(Number).reduce((a, b) => a + b, 0);
+}
+function reduceToSingle(n) {
+  while (n > 9) n = digitSum(n);
+  return n;
+}
+function reduceKeepMaster(n) {
+  while (n > 9 && ![11, 22, 33].includes(n)) n = digitSum(n);
+  return n;
+}
+function getLifePath(dateStr) {
+  return reduceKeepMaster(digitSum(dateStr.replace(/-/g, "")));
+}
+const MASTER_BASE = { 11: 2, 22: 4, 33: 6 };
+function toBase(n) { return MASTER_BASE[n] ?? n; }
+function getBirthdayNumber(dateStr) {
+  return reduceKeepMaster(parseDate(dateStr).day);
+}
+function getPersonalYear(dateStr, year) {
+  const { month, day } = parseDate(dateStr);
+  return reduceToSingle(digitSum(month) + digitSum(day) + digitSum(year));
+}
+function getPersonalMonth(personalYear, month) {
+  return reduceToSingle(personalYear + month);
+}
+
+// ===== 星座 =====
+function getSignByDate(dateStr) {
+  const { month, day } = parseDate(dateStr);
+  let name = "山羊座";
+  for (const [em, ed, n] of ZODIAC_TABLE) {
+    if (month < em || (month === em && day <= ed)) { name = n; break; }
+  }
+  return SIGNS.find(s => s.name === name);
+}
+
+// ===== 名前数 =====
+let kanaValueMap = null;
+const SMALL_KANA = { "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お", "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "ゎ": "わ", "っ": "つ" };
+function toHiragana(str) {
+  return str.replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+function getNameNumber(reading) {
+  if (!kanaValueMap) {
+    kanaValueMap = new Map();
+    [...KANA_ORDER].forEach((ch, i) => kanaValueMap.set(ch, (i % 9) + 1));
+  }
+  const chars = [...toHiragana(reading).replace(/\s|　/g, "")];
+  let total = 0, validCount = 0;
+  const unknown = [];
+  for (const ch of chars) {
+    const base = SMALL_KANA[ch] ?? ch.normalize("NFD").charAt(0);
+    const value = kanaValueMap.get(base);
+    if (value === undefined) unknown.push(ch);
+    else { total += value; validCount++; }
+  }
+  return { number: validCount > 0 ? reduceKeepMaster(total) : null, unknown };
+}
+function buildNameSection() {
+  if (!NAME_FEATURE_ENABLED) {
+    return `<h3>名前数</h3><p class="small">名前数は有料プランでご利用いただけます。</p>`;
+  }
+  const reading = document.getElementById("nameReading").value.trim();
+  if (!reading) {
+    return `<h3>名前数</h3><p class="small">ふりがなを入力すると、名前数を表示します。</p>`;
+  }
+  const result = getNameNumber(reading);
+  if (result.number === null) {
+    return `<h3>名前数</h3><p class="error">ひらがなまたはカタカナで入力してください。</p>`;
+  }
+  const info = EXPRESSION_NUMBERS[result.number];
+  const unknownNote = result.unknown.length
+    ? `<p class="small">読み取れなかった文字：${escapeHtml(result.unknown.join(""))}（ふりがなを確認してください）</p>` : "";
+  return `
+    <h3>名前数：${result.number}（${info.title}）</h3>
+    <p>${info.text}</p>
+    ${unknownNote}`;
+}
+
+// ===== 各機能 =====
+function showDaily() {
+  const v = document.getElementById("dailyDate").value;
+  if (!v) return showError("dailyResult", "生年月日を入力してください。");
+  const sign = getSignByDate(v);
+  const today = todayString();
+  const dayNumber = reduceToSingle(toBase(getLifePath(v)) + reduceToSingle(digitSum(today.replace(/-/g, ""))));
+  const [score, theme, advice] = DAILY_DAYS[dayNumber];
+  const lucky = LUCKY_COLORS[todayIndex(LUCKY_COLORS.length)];
+  document.getElementById("dailyResult").innerHTML = `
+    <p><strong>${today}</strong> の運勢</p>
+    <div class="score-row"><span class="score-label">総合運</span><span class="stars">${stars(score)}</span></div>
+    <p><strong>今日の数字：</strong>${dayNumber}（${theme}）</p>
+    <p>${advice}</p>
+    <p><strong>${sign.name}のひとこと：</strong>${sign.messages[todayIndex(sign.messages.length)]}</p>
+    <p><strong>${ELEMENTS[sign.element]}のヒント：</strong>${DAILY_ELEMENT_TIPS[sign.element]}</p>
+    <p><strong>ラッキーカラー：</strong>${lucky[0]}（${lucky[1]}）</p>`;
+}
+function showZodiac() {
+  const v = document.getElementById("zodiacDate").value;
+  if (!v) return showError("zodiacResult", "生年月日を入力してください。");
+  const sign = getSignByDate(v);
+  document.getElementById("zodiacResult").innerHTML = `
+    <p><strong>${sign.name}</strong>（${ELEMENTS[sign.element]}・${sign.keywords}）</p>
+    <p><strong>今日のひとこと：</strong>${sign.messages[todayIndex(sign.messages.length)]}</p>`;
+}
+function showNumerology() {
+  const value = document.getElementById("numDate").value;
+  if (!value) return showError("numResult", "生年月日を入力してください。");
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  const lifePath = getLifePath(value);
+  const life = LIFE_PATHS[lifePath];
+  const birthdayNum = getBirthdayNumber(value);
+  const personalYear = getPersonalYear(value, year);
+  const personalMonth = getPersonalMonth(personalYear, month);
+  const yearInfo = PERSONAL_NUMBERS[personalYear];
+  const monthInfo = PERSONAL_NUMBERS[personalMonth];
+
+  document.getElementById("numResult").innerHTML = `
+    <h3>ライフパスナンバー：${lifePath}（${life.title}）</h3>
+    <p><strong>キーワード：</strong>${life.keywords}</p>
+    <p>${life.text}</p>
+    <p><strong>強み：</strong>${life.strengths}</p>
+    <p><strong>課題：</strong>${life.challenges}</p>
+    <p><strong>恋愛：</strong>${life.love}</p>
+    <p><strong>仕事：</strong>${life.career}</p>
+
+    <h3>誕生日数：${birthdayNum}</h3>
+    <p>${BIRTHDAY_NUMBERS[birthdayNum]}</p>
+
+    <h3>${year}年の個人年数：${personalYear}（${yearInfo.theme}）</h3>
+    <p>${yearInfo.advice}</p>
+
+    <h3>${month}月の個人月数：${personalMonth}（${monthInfo.theme}）</h3>
+    <p>${monthInfo.advice}</p>
+    ${buildNameSection()}`;
+}
+function showCouple() {
+  const a = document.getElementById("coupleA").value;
+  const b = document.getElementById("coupleB").value;
+  if (!a || !b) return showError("coupleResult", "2人分の生年月日を入力してください。");
+  const signA = getSignByDate(a);
+  const signB = getSignByDate(b);
+  let rel;
+  if (signA.element === signB.element) rel = ELEMENT_COMPAT.same;
+  else if (HARMONY_PAIRS.some(([x, y]) =>
+    (x === signA.element && y === signB.element) || (x === signB.element && y === signA.element))) rel = ELEMENT_COMPAT.harmony;
+  else rel = ELEMENT_COMPAT.challenge;
+  const diff = Math.abs(toBase(getLifePath(a)) - toBase(getLifePath(b)));
+  const numScore = Math.max(1, 5 - Math.min(diff, 4));
+  const overall = Math.round((rel.score + numScore) / 2);
+  const overallText = overall >= 4 ? "全体として相性は良好です。"
+    : overall === 3 ? "穏やかに支え合える関係です。"
+    : "違いを理解し合うことで、関係がさらに深まります。";
+  document.getElementById("coupleResult").innerHTML = `
+    <p><strong>星座：</strong>${signA.name}（${ELEMENTS[signA.element]}）× ${signB.name}（${ELEMENTS[signB.element]}）</p>
+    <div class="score-row"><span class="score-label">星座の相性</span><span class="stars">${stars(rel.score)}</span></div>
+    <p>${rel.text}</p>
+    <div class="score-row"><span class="score-label">数秘術の相性</span><span class="stars">${stars(numScore)}</span></div>
+    <p>${NUM_COMPAT[numScore]}</p>
+    <div class="score-row"><span class="score-label">総合評価</span><span class="stars">${stars(overall)}</span></div>
+    <p><strong>${overallText}</strong></p>`;
+}
+
+// ===== タロット =====
+let tarotTimers = [];
+function clearTarotTimers() {
+  tarotTimers.forEach(clearTimeout);
+  tarotTimers = [];
+}
+function cardArtHtml(card) {
+  if (card.image) return `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}">`;
+  if (card.type === "major") return `<span class="art-glyph">${MAJOR_GLYPHS[card.name] ?? "✦"}</span>`;
+  return SUIT_ICONS[card.suit] ?? "";
+}
+function buildTarotSummary(picks, question) {
+  const reversedCount = picks.filter(c => c.reversed).length;
+  const majorCount = picks.filter(c => c.type === "major").length;
+  const counts = {};
+  picks.forEach(c => { if (c.suit) counts[c.suit] = (counts[c.suit] || 0) + 1; });
+  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  const lines = ["<strong>【総合解釈】</strong>"];
+  if (majorCount >= 2) lines.push("大きな人生の転機が近づいているようです。出来事の意味を大切に受け止めましょう。");
+  else if (dominant && dominant[1] >= 2) lines.push(`${SUITS[dominant[0]][0]}のカードが多く出ており、今は${SUITS[dominant[0]][3]}のようです。`);
+  else lines.push("3枚のカードが異なるテーマを示しており、さまざまな要素が絡み合う流れです。");
+  const flow = [
+    "全体を通して追い風が吹いています。今の流れを信じて進みましょう。",
+    "一部に課題はありますが、意識して取り組めば乗り越えられます。",
+    "慎重に進めることが大切です。焦らず整えることで流れが変わります。",
+    "今は無理をせず、内面を見直すことが最善の選択になりそうです。"
+  ];
+  lines.push(flow[Math.min(reversedCount, 3)]);
+  const last = picks[2];
+  lines.push(`最後に示された「${last.name}」（${last.reversed ? "逆位置" : "正位置"}）は、${last.reversed ? last.rev : last.up}`);
+  if (question) lines.push(`「${escapeHtml(question)}」について、焦らず自分のペースで向き合ってみてください。`);
+  return lines.map(l => `<p>${l}</p>`).join("");
+}
+function drawTarot() {
+  clearTarotTimers();
+  const question = document.getElementById("question").value.trim();
+  const picks = shuffle(DECK).slice(0, 3).map(c => ({ ...c, reversed: Math.random() < 0.5 }));
+  const sigils = shuffle(PLANET_SIGILS).slice(0, 3);
+  const positions = ["過去・現在", "現在の状況", "これからの流れ"];
+
+  let html = question ? `<p><strong>質問：</strong>${escapeHtml(question)}</p>` : "";
+  picks.forEach((c, i) => {
+    const upText = c.upright ?? c.up;
+    const revText = c.reversed_text ?? c.rev;
+    html += `
+      <div class="tarot-slot shuffling" id="slot-${i}">
+        <div class="position">${positions[i]}</div>
+        <div class="tarot-flip">
+          <div class="face front">
+            <div class="name">${c.name}
+              <span class="orientation ${c.reversed ? "reversed-label" : "upright"}">${c.reversed ? "逆位置" : "正位置"}</span>
+            </div>
+            <div class="card-art ${c.reversed ? "art-rev" : ""}">${cardArtHtml(c)}</div>
+            <p>${c.reversed ? revText : upText}</p>
+          </div>
+          <div class="face back" style="--sigil: '${sigils[i]}'"></div>
+        </div>
+      </div>`;
+  });
+  html += `<div class="summary pending" id="tarotSummary">${buildTarotSummary(picks, question)}</div>`;
+  document.getElementById("tarotResult").innerHTML = html;
+
+  tarotTimers.push(setTimeout(() => {
+    picks.forEach((_, i) => {
+      tarotTimers.push(setTimeout(() => {
+        const slot = document.getElementById(`slot-${i}`);
+        slot.classList.remove("shuffling");
+        slot.querySelector(".tarot-flip").classList.add("flipped");
+      }, i * 700));
+    });
+    tarotTimers.push(setTimeout(() => {
+      const s = document.getElementById("tarotSummary");
+      s.classList.remove("pending");
+      s.classList.add("reveal");
+    }, picks.length * 700 + 600));
+  }, 1000));
+}
+
+// ===== 月の満ち欠け =====
+function renderMoon() {
+  const referenceNewMoon = Date.UTC(2000, 0, 6, 18, 14);
+  const days = (Date.now() - referenceNewMoon) / 86400000;
+  const phase = ((days / 29.530588853) % 1 + 1) % 1;
+  const illuminated = (1 - Math.cos(2 * Math.PI * phase)) / 2;
+  const direction = phase < 0.5 ? -1 : 1;
+  document.getElementById("moonShadow").style.transform = `translateX(${direction * illuminated * 100}%)`;
+  const names = ["新月", "三日月", "上弦の月", "十三夜", "満月", "十六夜", "下弦の月", "有明の月"];
+  document.getElementById("moonLabel").textContent = `今日の月：${names[Math.round(phase * 8) % 8]}`;
+}
+
+// ===== タブと起動 =====
+document.querySelectorAll(".tab-btn").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.target).classList.add("active");
+  });
+});
+document.getElementById("dailyBtn").addEventListener("click", showDaily);
+document.getElementById("zodiacBtn").addEventListener("click", showZodiac);
+document.getElementById("numBtn").addEventListener("click", showNumerology);
+document.getElementById("coupleBtn").addEventListener("click", showCouple);
+document.getElementById("drawBtn").addEventListener("click", drawTarot);
+setupBirthdaySave();
+renderMoon();
+</script>
+</body>
+</html>
