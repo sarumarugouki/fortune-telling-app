@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>占いアプリ（プレビュー）</title>
+<title>占いアプリ</title>
 <style>
   :root {
     --gold: #ffd98a;
@@ -121,6 +121,16 @@
     stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 8px rgba(255, 217, 138, 0.6));
   }
   .art-glyph { font-size: 64px; color: var(--gold); text-shadow: 0 0 14px rgba(255, 217, 138, 0.7); line-height: 1; }
+  .card-art:has(img) {
+    height: auto;
+    aspect-ratio: 2 / 3;
+    max-width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0;
+    border: none;
+  }
+  .card-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
 
   .tarot-slot { position: relative; margin: 14px 0; animation: fadeUp 0.7s ease both; }
   .tarot-slot.shuffling { animation: sway 0.9s ease-in-out infinite alternate; }
@@ -260,7 +270,7 @@
     </div>
   </section>
 
-  <p class="small" style="text-align:center;">※ 占いは娯楽としてお楽しみください。（プレビュー版：データは簡易版です）</p>
+  <p class="small" style="text-align:center;">※ 占いは娯楽としてお楽しみください。</p>
 </div>
 
 <script>
@@ -268,6 +278,7 @@ const NAME_FEATURE_ENABLED = true;
 const STORAGE_KEY = "fortuneApp.birthday";
 const SAVE_PREF_KEY = "fortuneApp.savePref";
 const BIRTHDAY_INPUT_IDS = ["dailyDate", "zodiacDate", "numDate", "coupleA"];
+const USE_CARD_IMAGES = false; // 画像（images/cards/major-00.jpg など）をアップロードしたら true に変える
 
 const ELEMENTS = { fire: "火", earth: "地", air: "風", water: "水" };
 const SIGNS = [
@@ -474,6 +485,9 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 // ===== 生年月日の保存（この端末の中だけ） =====
@@ -713,21 +727,71 @@ function clearTarotTimers() {
   tarotTimers.forEach(clearTimeout);
   tarotTimers = [];
 }
+
+// カードの絵（大アルカナは画像、USE_CARD_IMAGES が false の間は記号）
 function cardArtHtml(card) {
-  if (card.image) return `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}">`;
+  if (card.type === "major" && USE_CARD_IMAGES) {
+    const index = MAJOR.findIndex(m => m[0] === card.name);
+    if (index >= 0) {
+      const file = `images/cards/major-${String(index).padStart(2, "0")}.jpg`;
+      return `<img src="${file}" alt="${escapeHtml(card.name)}">`;
+    }
+  }
   if (card.type === "major") return `<span class="art-glyph">${MAJOR_GLYPHS[card.name] ?? "✦"}</span>`;
   return SUIT_ICONS[card.suit] ?? "";
 }
+
+// ===== 総合解釈の文章パターン =====
+const OPENERS = [
+  "カードは今の流れをやさしく映し出しています。",
+  "3枚のカードが、あなたの今を物語っています。",
+  "静かに、カードのメッセージを受け取ってみましょう。"
+];
+const CLOSERS = [
+  "結果を決めつけず、自分の選択を大切にしてください。",
+  "カードは道しるべです。最後に決めるのはあなた自身です。",
+  "今日できる小さな一歩から始めてみましょう。"
+];
+const TOPIC_WORDS = {
+  仕事: ["仕事", "転職", "会社", "職場", "キャリア"],
+  恋愛: ["恋", "恋愛", "彼", "彼女", "パートナー", "結婚"],
+  お金: ["お金", "収入", "給料", "貯金", "投資"],
+  健康: ["健康", "体", "体調", "睡眠"],
+  人間関係: ["人間関係", "友人", "家族", "相手"]
+};
+const TOPIC_LINES = {
+  仕事: ["仕事では、今の役割を見直すと流れが変わりそうです。", "職場での立ち位置を意識すると、評価につながりやすい時期です。"],
+  恋愛: ["恋愛では、相手の本音を丁寧に聞くことが鍵になりそうです。", "気持ちを言葉にすると、関係が前に進みやすくなります。"],
+  お金: ["お金の面では、無理のない計画を立てることが安心につながります。", "出費と収入のバランスを一度整理してみると良さそうです。"],
+  健康: ["体調のサインを大切にして、休息を取り入れましょう。", "生活リズムを整えることが、心と体の安定につながります。"],
+  人間関係: ["人間関係では、相手の立場を想像することが和らぎのきっかけになります。", "身近な人との対話を増やすと、安心感が生まれやすいです。"],
+  その他: ["今は焦らず、自分のペースで進めることが大切です。"]
+};
+function detectTopic(question) {
+  if (!question) return null;
+  for (const [topic, words] of Object.entries(TOPIC_WORDS)) {
+    if (words.some(w => question.includes(w))) return topic;
+  }
+  return "その他";
+}
+
 function buildTarotSummary(picks, question) {
   const reversedCount = picks.filter(c => c.reversed).length;
   const majorCount = picks.filter(c => c.type === "major").length;
   const counts = {};
   picks.forEach(c => { if (c.suit) counts[c.suit] = (counts[c.suit] || 0) + 1; });
   const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  const lines = ["<strong>【総合解釈】</strong>"];
-  if (majorCount >= 2) lines.push("大きな人生の転機が近づいているようです。出来事の意味を大切に受け止めましょう。");
-  else if (dominant && dominant[1] >= 2) lines.push(`${SUITS[dominant[0]][0]}のカードが多く出ており、今は${SUITS[dominant[0]][3]}のようです。`);
-  else lines.push("3枚のカードが異なるテーマを示しており、さまざまな要素が絡み合う流れです。");
+
+  const lines = [pickRandom(OPENERS)];
+
+  if (majorCount >= 2) {
+    lines.push("大きな人生の転機が近づいているようです。出来事の意味を大切に受け止めましょう。");
+  } else if (dominant && dominant[1] >= 2) {
+    lines.push(`${SUITS[dominant[0]][0]}のカードが多く出ており、今は${SUITS[dominant[0]][3]}のようです。`);
+  } else {
+    lines.push("3枚のカードが異なるテーマを示しており、さまざまな要素が絡み合う流れです。");
+  }
+
   const flow = [
     "全体を通して追い風が吹いています。今の流れを信じて進みましょう。",
     "一部に課題はありますが、意識して取り組めば乗り越えられます。",
@@ -735,11 +799,18 @@ function buildTarotSummary(picks, question) {
     "今は無理をせず、内面を見直すことが最善の選択になりそうです。"
   ];
   lines.push(flow[Math.min(reversedCount, 3)]);
+
+  const topic = detectTopic(question);
+  if (topic) lines.push(pickRandom(TOPIC_LINES[topic]));
+
   const last = picks[2];
   lines.push(`最後に示された「${last.name}」（${last.reversed ? "逆位置" : "正位置"}）は、${last.reversed ? last.rev : last.up}`);
-  if (question) lines.push(`「${escapeHtml(question)}」について、焦らず自分のペースで向き合ってみてください。`);
-  return lines.map(l => `<p>${l}</p>`).join("");
+
+  lines.push(pickRandom(CLOSERS));
+
+  return `<strong>【総合解釈】</strong>` + lines.map(l => `<p>${escapeHtml(l)}</p>`).join("");
 }
+
 function drawTarot() {
   clearTarotTimers();
   const question = document.getElementById("question").value.trim();
